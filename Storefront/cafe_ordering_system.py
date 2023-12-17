@@ -1,7 +1,7 @@
 import orders
 import json
 import requests
-# Java
+# Java Cafe
 def main():
     print()
     print()
