@@ -1,14 +1,44 @@
 import orders
 import json
 import requests
-# Java Cafe
+import sys
+
+# Java Journeys Café Ordering System
+# This program simulates an ordering system for a café named Java Journeys.
+# It allows users to select from a variety of coffee, tea, and sweet treats,
+# customize their choices (size, milk type, sugar level, etc.), and view their order total.
+# The program supports command line arguments to initiate specific actions like 'order' or 'view'.
+# It also features dynamic input validation, API calls for daily jokes, and JSON file handling for order saving.
+    
+
 def main():
     print()
     print()
-    print("Welcome to Java Journeys Café!")
+    print()
+    print("Welcome to Java Journeys Café!\n")
+    # Checks to see if the user indicates Java Journeys is out of food items
+    if len(sys.argv) > 1:
+        first_arg = sys.argv[1]
+        if(first_arg == 'nf'):
+            print("Please note we are not serving food items today/n")
+    
     print("Joke of the day: ", get_random_joke())
+    
+    file_name = input("Please enter the name of the file containing your name: ")
+    
+    try:
+        with open(file_name, 'r') as file:
+            names = file.readlines()
+        names = [name.strip() for name in names]  
+        print(f"Welcome {names[1]}")
+    except FileNotFoundError:
+        print("Names file not found. Proceeding without name.")
+        names = []
+
+
     order = []
     menuSelection(order)
+
 
 def menuSelection(order):
     print()
@@ -28,8 +58,9 @@ def menuSelection(order):
         
         #Espresso input
         elif menu_selection == 2:
-            size = sizeInput()
+            size, price = sizeInput()
             item = orders.Espresso(size)
+            item.price += price
 
             order.append(item)
             print(f"Added a {item.describe()} to your order!")
@@ -51,11 +82,12 @@ def menuSelection(order):
 
             # Takes user inputs
             type = coffee_types[menu_selection]
-            size = sizeInput()
+            size, price = sizeInput()
             milk = milkInput()
             sugar = sugarInput()
 
             item = orders.Coffee(size, milk, sugar, type)
+            item.price += price
 
             # Adds item to order
             order.append(item)
@@ -75,30 +107,35 @@ def menuSelection(order):
             return
         # Tea input
         elif menu_selection == 1:
-            size = sizeInput()
+            size, price = sizeInput()
             sugar = sugarInput()
             type = teaInput()
             item = orders.Tea(size, sugar, type)
+            item.price += price
         # Chai input
         elif menu_selection == 2:
-            size = sizeInput()
+            size, price = sizeInput()
             sugar = sugarInput()
             milk = milkInput()
             item = orders.Chai(size, sugar, milk)
+            item.price += price
         # Hot Chocolate input
         elif menu_selection == 3:
-            size = sizeInput()
+            size, price = sizeInput()
             milk = milkInput()
             item = orders.HotChocolate(size, milk)
+            item.price += price
         # Lemonade
         elif menu_selection == 4:
-            size = sizeInput()
+            size, price = sizeInput()
             item = orders.Lemonade(size)
+            item.price += price
         # Iced Tea
         elif menu_selection == 5:
-            size = sizeInput()
+            size, price = sizeInput()
             sweet = sweetInput()
             item = orders.IcedTea(size, sweet)
+            item.price += price
 
         # Add to order
         order.append(item)
@@ -127,7 +164,7 @@ def menuSelection(order):
         elif menu_selection == 3:
             type = sconeInput()
             warmed = warmedInput()
-            item = orders.Scone(type)
+            item = orders.Scone(type, warmed)
         # Cheesecake input
         elif menu_selection == 4:
             type = cheesecakeInput()
@@ -161,7 +198,18 @@ def menuSelection(order):
             print(f"{menu_selection} is not a valid selection")
             print("Please select yes(y) or (n)")
             print()
-    
+
+    if len(sys.argv) > 1:
+        first_arg = sys.argv[1]
+    if first_arg == 'nf':
+        print("Oops! The cafe is out of food items today. We've had to remove all food items from your order")
+        print()
+
+        for item in order:
+            if item.isFood() == True:
+                print(f"We've removed {item.describe()} from your order")
+                order.remove(item)
+
     # Prints total or restarts depending on input
     if menu_selection == "y":
         printOrder(order)
@@ -183,6 +231,21 @@ def menuSelection(order):
 
 # validates input based on specified range
 def inputValidation(size, print_function):
+    """
+    Validates user input ensuring it's within a specified range.
+
+    This function prompts the user to make a selection from a range of menu options. 
+    It validates the input to ensure it is within the given range (1 to 'size'). 
+    If the input is not valid, it displays an error message and prompts the user again, 
+    using the 'print_function' to display the menu options.
+
+    Parameters:
+    size (int): The upper limit of the range for valid input.
+    print_function (function): A function with no parameters that prints the menu options.
+
+    Returns:
+    int: The validated menu selection made by the user, as an integer.
+    """
     menu_options =[]
     for i in range(size + 1):
         menu_options.append(str(i))
@@ -197,12 +260,13 @@ def inputValidation(size, print_function):
             break
         else:
             print()
-            print(f"{menu_selection} is not a valid selection")
+            print(fr"{menu_selection} is not a valid selection ¯\_(ツ)_/¯")
             print("Please select from one of the following options...")
             print_function()
             print()
     
     return menu_selection
+
 
 # API call to make random joke
 def get_random_joke():
@@ -241,9 +305,15 @@ def sizeInput():
     print("Size: ")
     printSize()
     size_choice = inputValidation(3, printSize)
-    size_types = {1: "Small", 2: "Medium", 3: "Large"}
+    size_types = {
+        1: ("Small", 0.00), 
+        2: ("Medium", 1.00),
+        3: ("Large", 2.00)
+    }
     size = size_types.get(size_choice, "Small") 
-    return size
+    
+    size, price = size_types.get(size_choice, ("Small", 1.00))
+    return size, price
     
 # Handle milk input
 def milkInput():
@@ -439,17 +509,23 @@ def printMainMenu():
 
 ## Coffee & Espresso Drinks Menu
 def printCoffeeMenu():
-    print(" 1) Brewed Coffee..............................$2.50")
-    print(" 2) Espresso...................................$2.00")
-    print(" 3) Americano..................................$2.75")
-    print(" 4) Cappuccino.................................$3.50")
-    print(" 5) Latte......................................$4.00")
-    print(" 6) Mocha......................................$4.50")
-    print(" 7) Iced Coffee................................$3.00")
-    print(" 8) Iced Latte.................................$4.00")
-    print(" 9) Cold Brew..................................$3.50")
-    print(" 10) Seasonal Special: Pumpkin Spice Latte.....$4.50")
+    menu_items = {
+        1: ("Brewed Coffee", 2.50),
+        2: ("Espresso", 2.00),
+        3: ("Americano", 2.75),
+        4: ("Cappuccino", 3.50),
+        5: ("Latte", 4.00),
+        6: ("Mocha", 4.50),
+        7: ("Iced Coffee", 3.00),
+        8: ("Iced Latte", 4.00),
+        9: ("Cold Brew", 3.50),
+        10: ("Seasonal Special: Pumpkin Spice Latte", 4.50)
+    }
+
+    for number, (name, price) in menu_items.items():
+        print(f" {number}) {name.ljust(40, '.')} ${price:.2f}")
     print()
+
 
 ## Tea & Other Beverages Menu
 def printTeaMenu():
